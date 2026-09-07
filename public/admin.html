@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Confesiones</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<canvas id="starfield"></canvas>
+
+<div id="loginView" class="login-box">
+  <h2 style="text-align:center;margin-top:0;">Panel de Admin</h2>
+  <input type="password" id="passwordInput" placeholder="Contraseña de admin">
+  <button id="loginBtn">Entrar</button>
+  <div class="status-msg" id="loginMsg"></div>
+</div>
+
+<div id="adminView" class="admin-wrapper" style="display:none;">
+  <h1>📬 Confesiones recibidas</h1>
+  <button class="refresh-btn" id="refreshBtn" style="max-width:200px;display:block;margin:0 auto 20px;">🔄 Actualizar</button>
+  <div id="list"></div>
+</div>
+
+<footer>
+  🚀 Powered by <a href="https://github.com/AmilcarGit" target="_blank" rel="noopener">Creador AmilcarGit</a> · Colaborador: Danny
+</footer>
+
+<script src="/starfield.js"></script>
+<script>
+  const loginView = document.getElementById('loginView');
+  const adminView = document.getElementById('adminView');
+  const passwordInput = document.getElementById('passwordInput');
+  const loginBtn = document.getElementById('loginBtn');
+  const loginMsg = document.getElementById('loginMsg');
+  const list = document.getElementById('list');
+  const refreshBtn = document.getElementById('refreshBtn');
+
+  let adminPassword = sessionStorage.getItem('adminPassword') || '';
+
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+  }
+
+  async function loadConfessions() {
+    list.innerHTML = '<p class="empty-msg">Cargando...</p>';
+    try {
+      const res = await fetch('/api/confessions', {
+        headers: { 'X-Admin-Password': adminPassword }
+      });
+      if (res.status === 401) {
+        sessionStorage.removeItem('adminPassword');
+        showLogin('Contraseña incorrecta.');
+        return;
+      }
+      const data = await res.json();
+      if (!data.length) {
+        list.innerHTML = '<p class="empty-msg">Aún no hay confesiones 🤫</p>';
+        return;
+      }
+      list.innerHTML = data.map(c => `
+        <div class="confession-item" data-id="${c.id}">
+          <div class="meta">
+            <span>${formatDate(c.created_at)}</span>
+            <button class="delete-btn" onclick="deleteConfession(${c.id})">🗑 Borrar</button>
+          </div>
+          <div>${c.content.replace(/</g, '&lt;')}</div>
+        </div>
+      `).join('');
+    } catch (err) {
+      list.innerHTML = '<p class="empty-msg">Error al cargar. Intenta de nuevo.</p>';
+    }
+  }
+
+  async function deleteConfession(id) {
+    if (!confirm('¿Borrar esta confesión?')) return;
+    await fetch('/api/confessions/' + id, {
+      method: 'DELETE',
+      headers: { 'X-Admin-Password': adminPassword }
+    });
+    loadConfessions();
+  }
+  window.deleteConfession = deleteConfession;
+
+  function showLogin(msg) {
+    loginView.style.display = 'block';
+    adminView.style.display = 'none';
+    loginMsg.textContent = msg || '';
+    loginMsg.className = 'status-msg error';
+  }
+
+  function showAdmin() {
+    loginView.style.display = 'none';
+    adminView.style.display = 'block';
+    loadConfessions();
+  }
+
+  loginBtn.addEventListener('click', () => {
+    adminPassword = passwordInput.value;
+    sessionStorage.setItem('adminPassword', adminPassword);
+    showAdmin();
+  });
+
+  refreshBtn.addEventListener('click', loadConfessions);
+
+  if (adminPassword) {
+    showAdmin();
+  } else {
+    showLogin();
+  }
+</script>
+</body>
+</html>
