@@ -1,15 +1,22 @@
-const Database = require('better-sqlite3');
+require('dotenv').config();
+const { Pool } = require('pg');
 
-const db = new Database(process.env.DB_PATH || 'data.sqlite');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('render.com')
+    ? { rejectUnauthorized: false }
+    : (process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false)
+});
 
-db.pragma('journal_mode = WAL');
+async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS confessions (
+      id SERIAL PRIMARY KEY,
+      content TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+  console.log('Tabla "confessions" lista');
+}
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS confessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    message TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-
-module.exports = db;
+module.exports = { pool, initDb };
