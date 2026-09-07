@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confesiones Anónimas</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<canvas id="starfield"></canvas>
+
+<div class="wrapper">
+  <div class="card">
+    <div class="card-header">
+      <img class="avatar" src="/avatar.jpg" alt="avatar" onerror="this.style.display='none'">
+      <h1>Confesiones</h1>
+    </div>
+    <div class="card-body">
+      <p class="subtitle">Envíame confesiones anónimas</p>
+      <textarea id="messageInput" maxlength="1000" placeholder="Escribe tu confesión aquí..."></textarea>
+      <div class="char-count"><span id="charCount">0</span>/1000</div>
+      <button class="send-btn" id="sendBtn">Enviar anónimamente</button>
+      <div class="status-msg" id="statusMsg"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  🚀 Powered by <a href="https://github.com/AmilcarGit" target="_blank" rel="noopener">Creador AmilcarGit</a> · Colaborador: Danny
+</footer>
+
+<script src="/starfield.js"></script>
+<script>
+  const messageInput = document.getElementById('messageInput');
+  const charCount = document.getElementById('charCount');
+  const sendBtn = document.getElementById('sendBtn');
+  const statusMsg = document.getElementById('statusMsg');
+
+  messageInput.addEventListener('input', () => {
+    charCount.textContent = messageInput.value.length;
+  });
+
+  sendBtn.addEventListener('click', async () => {
+    const message = messageInput.value.trim();
+    statusMsg.textContent = '';
+    statusMsg.className = 'status-msg';
+
+    if (!message) {
+      statusMsg.textContent = 'Escribe algo antes de enviar.';
+      statusMsg.className = 'status-msg error';
+      return;
+    }
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Enviando...';
+
+    try {
+      const res = await fetch('/api/confess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        statusMsg.textContent = '¡Confesión enviada con éxito! 🎉';
+        statusMsg.className = 'status-msg ok';
+        messageInput.value = '';
+        charCount.textContent = '0';
+      } else {
+        statusMsg.textContent = data.error || 'Ocurrió un error, intenta de nuevo.';
+        statusMsg.className = 'status-msg error';
+      }
+    } catch (err) {
+      statusMsg.textContent = 'No se pudo conectar con el servidor.';
+      statusMsg.className = 'status-msg error';
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Enviar anónimamente';
+    }
+  });
+</script>
+</body>
+</html>
